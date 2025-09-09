@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LangGraph Toy - Simple Agent Interface</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>LangGraph Toy</h1>
+            <p>A custom LangGraph implementation with simple reasoning agent</p>
+        </header>
+        
+        <main>
+            <div class="chat-container">
+                <div class="chat-header">
+                    <h2>Chat with Simple Agent</h2>
+                    <div class="agent-info">
+                        <span class="agent-status">●</span>
+                        <span class="agent-name">Simple Agent</span>
+                    </div>
+                </div>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message system">
+                        <div class="message-content">
+                            Hello! I'm a simple agent that can help you with calculations, weather information, and searches. How can I assist you today?
+                        </div>
+                        <div class="message-timestamp">Just now</div>
+                    </div>
+                </div>
+                
+                <div class="chat-input">
+                    <form id="chatForm">
+                        <input 
+                            type="text" 
+                            id="messageInput" 
+                            placeholder="Type your message here..."
+                            autocomplete="off"
+                            required
+                        >
+                        <button type="submit" id="sendButton">Send</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="info-panel">
+                <div class="info-section">
+                    <h3>Available Tools</h3>
+                    <ul class="tools-list">
+                        <li><strong>Calculator</strong> - Mathematical expressions</li>
+                        <li><strong>Weather</strong> - Weather information by location</li>
+                        <li><strong>Search</strong> - General information search</li>
+                    </ul>
+                </div>
+                
+                <div class="info-section">
+                    <h3>Example Queries</h3>
+                    <ul class="examples-list">
+                        <li>"Calculate 2 + 2"</li>
+                        <li>"What's the weather in Beijing?"</li>
+                        <li>"Search for Python programming"</li>
+                        <li>"Hello, how are you?"</li>
+                    </ul>
+                </div>
+                
+                <div class="info-section">
+                    <h3>System Status</h3>
+                    <div class="status-info">
+                        <div class="status-item">
+                            <span class="status-label">API Status:</span>
+                            <span class="status-value" id="apiStatus">Checking...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Agent:</span>
+                            <span class="status-value">Simple Agent</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script>
+        class ChatInterface {
+            constructor() {
+                this.chatMessages = document.getElementById('chatMessages');
+                this.messageInput = document.getElementById('messageInput');
+                this.chatForm = document.getElementById('chatForm');
+                this.sendButton = document.getElementById('sendButton');
+                this.apiStatus = document.getElementById('apiStatus');
+                
+                this.init();
+            }
+            
+            init() {
+                this.chatForm.addEventListener('submit', (e) => this.handleSubmit(e));
+                this.messageInput.addEventListener('input', () => this.updateSendButton());
+                this.checkAPIStatus();
+                
+                // Set initial focus
+                this.messageInput.focus();
+            }
+            
+            async checkAPIStatus() {
+                try {
+                    const response = await fetch('/api/v1/health');
+                    if (response.ok) {
+                        this.apiStatus.textContent = 'Online';
+                        this.apiStatus.className = 'status-value online';
+                    } else {
+                        throw new Error('API not responding');
+                    }
+                } catch (error) {
+                    this.apiStatus.textContent = 'Offline';
+                    this.apiStatus.className = 'status-value offline';
+                }
+            }
+            
+            updateSendButton() {
+                const hasText = this.messageInput.value.trim().length > 0;
+                this.sendButton.disabled = !hasText;
+            }
+            
+            async handleSubmit(e) {
+                e.preventDefault();
+                
+                const message = this.messageInput.value.trim();
+                if (!message) return;
+                
+                // Add user message to chat
+                this.addMessage(message, 'user');
+                
+                // Clear input
+                this.messageInput.value = '';
+                this.updateSendButton();
+                
+                // Show typing indicator
+                this.showTypingIndicator();
+                
+                try {
+                    // Send message to agent
+                    const response = await fetch('/api/v1/chat', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            agent_type: 'simple'
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // Remove typing indicator
+                    this.removeTypingIndicator();
+                    
+                    // Add agent response to chat
+                    this.addMessage(data.response, 'agent');
+                    
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    this.removeTypingIndicator();
+                    this.addMessage('Sorry, there was an error processing your request. Please try again.', 'error');
+                }
+            }
+            
+            addMessage(content, type) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+                
+                const messageContent = document.createElement('div');
+                messageContent.className = 'message-content';
+                messageContent.textContent = content;
+                
+                const messageTimestamp = document.createElement('div');
+                messageTimestamp.className = 'message-timestamp';
+                messageTimestamp.textContent = this.getCurrentTime();
+                
+                messageDiv.appendChild(messageContent);
+                messageDiv.appendChild(messageTimestamp);
+                
+                this.chatMessages.appendChild(messageDiv);
+                this.scrollToBottom();
+            }
+            
+            showTypingIndicator() {
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'message typing';
+                typingDiv.id = 'typingIndicator';
+                
+                const typingContent = document.createElement('div');
+                typingContent.className = 'message-content';
+                typingContent.innerHTML = '<span class="typing-dots"><span>.</span><span>.</span><span>.</span></span>';
+                
+                const typingTimestamp = document.createElement('div');
+                typingTimestamp.className = 'message-timestamp';
+                typingTimestamp.textContent = this.getCurrentTime();
+                
+                typingDiv.appendChild(typingContent);
+                typingDiv.appendChild(typingTimestamp);
+                
+                this.chatMessages.appendChild(typingDiv);
+                this.scrollToBottom();
+            }
+            
+            removeTypingIndicator() {
+                const typingIndicator = document.getElementById('typingIndicator');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+            }
+            
+            getCurrentTime() {
+                const now = new Date();
+                return now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            }
+            
+            scrollToBottom() {
+                this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
+            }
+        }
+        
+        // Initialize chat interface when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChatInterface();
+        });
+    </script>
+</body>
+</html>
