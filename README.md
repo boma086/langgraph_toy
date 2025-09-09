@@ -150,6 +150,8 @@ python3 -m pytest tests/ --cov=. --cov-report=html
 
 **Test Results**: 106 tests passing ✅
 
+=============================================================
+
 ## 🐳 Docker Deployment
 
 ### Quick Start with Docker
