@@ -28,7 +28,7 @@
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-username/langgraph-toy.git
+   git clone https://github.com/boma086/langgraph-toy.git
    cd langgraph-toy
    ```
 
