@@ -22,6 +22,7 @@ class ChatRequest(BaseModel):
     """Request model for chat interactions."""
     message: str
     agent_type: str = "simple"
+    strategy: Optional[str] = None  # "traditional", "compiled", "auto"
 
 
 class ChatResponse(BaseModel):
@@ -29,6 +30,8 @@ class ChatResponse(BaseModel):
     response: str
     agent_type: str
     timestamp: float
+    strategy_used: Optional[str] = None
+    execution_stats: Optional[Dict[str, Any]] = None
 
 
 class GraphStateRequest(BaseModel):

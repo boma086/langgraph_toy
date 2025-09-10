@@ -110,3 +110,9 @@ bandit-report.*
 safety-report.*
 test-results/
 test-reports/
+
+# doc
+CLAUDE.md
+CODERABBIT_SETUP.md
+GITHUB_SETUP.md
+MVP_DESIGN.md

@@ -21,6 +21,12 @@ python3 main.py
 
 # Run tests
 python3 -m pytest tests/
+
+# Run strategy selection tests
+python3 -m pytest tests/test_strategy_selector.py
+
+# Run compilation tests  
+python3 -m pytest tests/test_compilation.py
 ```
 
 ## Architecture
@@ -30,16 +36,21 @@ python3 -m pytest tests/
 - **core/state.py**: State management with schema validation
 - **core/nodes.py**: Node definitions and execution logic
 - **core/edges.py**: Edge routing and conditional logic
+- **core/execution.py**: Strategy pattern execution system (Traditional vs Compiled)
+- **core/compilation.py**: Agent compilation with LangGraph-like API
+- **core/strategy_selector.py**: Multi-level strategy selection system
 - **agents/**: Agent implementations with base interfaces
-- **api/**: FastAPI web server and REST endpoints
+- **api/**: FastAPI web server with configurable strategy support
 - **web/**: Static web interface for agent interaction
 
 ### Key Design Principles
 - **No SDK Dependency**: Custom implementation of LangGraph concepts
 - **State Management**: Immutable state with schema validation
 - **Graph Execution**: Sequential processing with conditional routing
+- **Strategy Pattern**: Configurable execution strategies (Traditional vs Compiled)
+- **Configuration-Driven**: Multi-level strategy selection without code changes
 - **Agent Framework**: Tool-based architecture with reasoning capabilities
-- **Web API**: RESTful endpoints for graph execution and agent interaction
+- **Web API**: RESTful endpoints with runtime strategy selection
 
 ## Common Commands
 
@@ -70,6 +81,8 @@ mypy core agents api
 - **test_state.py**: State management and validation
 - **test_agent.py**: Agent functionality and tool usage
 - **test_api.py**: Web API endpoints and integration
+- **test_compilation.py**: Agent compilation and strategy tests
+- **test_strategy_selector.py**: Multi-level strategy selection tests
 
 ### Test Patterns
 - Test graph execution with different node configurations
@@ -105,3 +118,40 @@ mypy core agents api
 - State tracks agent messages, tool calls, and intermediate steps
 - Reasoning loop continues until task completion or max iterations
 - Web interface provides chat-based interaction
+
+## Execution Strategies
+
+### Strategy Types
+- **Traditional**: Creates new graph for each execution (default for debugging)
+- **Compiled**: Caches and reuses graphs for better performance
+- **Auto**: Intelligently selects based on request complexity
+
+### Strategy Selection
+The system supports multi-level strategy selection:
+1. **Request Level**: `{"strategy": "compiled"}` in request body
+2. **Header Level**: `X-Execution-Strategy: compiled` HTTP header
+3. **Environment Level**: `DEFAULT_STRATEGY=compiled` environment variable
+4. **Auto Selection**: `AUTO_STRATEGY=true` with complexity analysis
+
+### Usage Examples
+```python
+from core.compilation import compile
+
+# Compile agent for better performance
+compiled_agent = compile(agent)
+result = compiled_agent.run("Hello")
+
+# Original approach still works unchanged
+result = agent.run("Hello")
+```
+
+### Configuration
+```bash
+# Environment configuration
+export DEFAULT_STRATEGY=compiled
+export AUTO_STRATEGY=true
+export COMPILED_CACHE_SIZE=50
+
+# Start server
+python main.py
+```

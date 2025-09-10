@@ -1,12 +1,13 @@
 """API endpoints for LangGraph toy."""
 
-from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Request, Header
 from typing import Dict, Any, Optional
 import time
 import logging
 from agents.simple import SimpleAgent
 from core.state import AgentState, GraphState
 from core.graph import Graph
+from core.strategy_selector import strategy_selector
 from api.models import ExecuteRequest, ExecuteResponse, ChatRequest, ChatResponse, GraphStateRequest, GraphStateResponse
 
 
@@ -54,21 +55,41 @@ async def execute_graph(request: ExecuteRequest):
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat_with_agent(request: ChatRequest):
-    """Chat with an agent."""
+async def chat_with_agent(request: ChatRequest, http_request: Request, x_execution_strategy: Optional[str] = Header(None)):
+    """Chat with an agent using configurable execution strategy."""
     try:
         agent = simple_agent
         
         if request.agent_type == "simple":
-            response = agent.run(request.message)
+            # Select execution strategy using multi-level decision
+            strategy = strategy_selector.create_strategy(
+                request_strategy=request.strategy,
+                header_strategy=x_execution_strategy,
+                request_complexity=len(request.message)  # Simple complexity measure
+            )
+            
+            # Execute with selected strategy
+            start_time = time.time()
+            response = strategy.execute(agent, request.message)
+            execution_time = time.time() - start_time
+            
+            # Get strategy stats
+            stats = strategy.get_stats()
+            
+            return ChatResponse(
+                response=response,
+                agent_type=request.agent_type,
+                timestamp=time.time(),
+                strategy_used=stats.get("strategy", "unknown"),
+                execution_stats={
+                    "execution_time": execution_time,
+                    "cache_hits": stats.get("cache_hits", 0),
+                    "cache_misses": stats.get("cache_misses", 0),
+                    "hit_rate": stats.get("hit_rate", 0.0)
+                }
+            )
         else:
             raise HTTPException(status_code=400, detail=f"Unknown agent type: {request.agent_type}")
-        
-        return ChatResponse(
-            response=response,
-            agent_type=request.agent_type,
-            timestamp=time.time()
-        )
     
     except HTTPException:
         # Re-raise HTTP exceptions (like 400 for bad requests)
